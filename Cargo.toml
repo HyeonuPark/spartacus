@@ -1,0 +1,15 @@
+[package]
+name = "spartacus"
+version = "0.1.0"
+authors = ["Hyeonu Park <nemo1275@gmail.com>"]
+
+description = "Typed arena for Rust where elements can be dropped individually"
+homepage = "https://github.com/HyeonuPark/spartacus"
+documentation = "https://docs.rs/spartacus"
+repository = "https://github.com/HyeonuPark/spartacus.git"
+keywords = ["arena"]
+categories = []
+readme = "README.md"
+license = "MIT/Apache-2.0"
+
+[dependencies]
