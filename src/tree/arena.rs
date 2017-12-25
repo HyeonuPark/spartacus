@@ -12,7 +12,7 @@ pub struct ArenaData<T> {
     empty: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Bucket<T> {
     arena: Arena<T>,
     index: usize,
@@ -135,5 +135,11 @@ impl<T> DerefMut for Bucket<T> {
 impl<T> Drop for Bucket<T> {
     fn drop(&mut self) {
         self.arena.free(self.index)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Bucket<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.arena.get(self.index).fmt(f)
     }
 }
