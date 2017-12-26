@@ -1,26 +1,28 @@
 use std::mem::replace;
 use std::borrow::Borrow;
+use std::marker::PhantomData;
 
 use rand::random;
 
-use super::arena::{Arena, Bucket};
+use alloc::{Alloc, Boxed};
 
-#[derive(Debug)]
-pub struct TreeMap<K, V> {
-    arena: Arena<Node<K, V>>,
-    root: Link<K, V>,
+pub struct TreeMap<A: Alloc<Node<A, K, V>>, K, V> {
+    arena: A,
+    root: Link<A, K, V>,
+    _phantom: PhantomData<(K, V)>,
 }
 
-impl<K: Ord, V> TreeMap<K, V> {
+impl<A: Alloc<Node<A, K, V>>, K: Ord, V> TreeMap<A, K, V> {
     pub fn new() -> Self {
         TreeMap {
-            arena: Arena::new(),
-            root: Link(None),
+            arena: Default::default(),
+            root: Link::new(),
+            _phantom: Default::default(),
         }
     }
 
     pub fn clear(&mut self) {
-        self.root = Link(None);
+        self.root = Link::new();
     }
 
     pub fn len(&self) -> usize {
@@ -55,7 +57,7 @@ impl<K: Ord, V> TreeMap<K, V> {
         self.root.remove(key)
     }
 
-    pub fn entry(&mut self, key: K) -> Entry<K, V> {
+    pub fn entry(&mut self, key: K) -> Entry<A, K, V> {
         self.root.entry(&self.arena, key)
     }
 
@@ -70,32 +72,34 @@ impl<K: Ord, V> TreeMap<K, V> {
     }
 }
 
-impl<K: Ord, V> Default for TreeMap<K, V> {
+impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Default for TreeMap<A, K, V> {
     fn default() -> Self {
         TreeMap::new()
     }
 }
 
-#[derive(Debug)]
-struct Link<K, V>(Option<Bucket<Node<K, V>>>);
+struct Link<A: Alloc<Node<A, K, V>>, K, V>(Option<A::Boxed>, PhantomData<(K, V)>);
 
-#[derive(Debug)]
-struct Node<K, V> {
+struct Node<A: Alloc<Node<A, K, V>>, K, V> {
     weight: usize,
     key: K,
     value: V,
-    left: Link<K, V>,
-    right: Link<K, V>,
+    left: Link<A, K, V>,
+    right: Link<A, K, V>,
 }
 
-impl<K: Ord, V> Link<K, V> {
-    fn set(&mut self, arena: &Arena<Node<K, V>>, key: K, value: V) {
+impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Link<A, K, V> {
+    fn new() -> Self {
+        Link(None, Default::default())
+    }
+
+    fn set(&mut self, arena: &A, key: K, value: V) {
         self.0 = Some(arena.alloc(Node {
             weight: random(),
             key,
             value,
-            left: Link(None),
-            right: Link(None),
+            left: Link::new(),
+            right: Link::new(),
         }))
     }
 
@@ -154,8 +158,7 @@ impl<K: Ord, V> Link<K, V> {
     {
 
         if self.same(key) {
-            let node = self.0.take().unwrap();
-            let node = Bucket::into_inner(node);
+            let node = self.0.take().unwrap().unbox();
             return Some(node.value);
         }
 
@@ -171,7 +174,7 @@ impl<K: Ord, V> Link<K, V> {
         }
     }
 
-    fn entry(&mut self, arena: &Arena<Node<K, V>>, key: K) -> Entry<K, V> {
+    fn entry<'a, 'b>(&'a mut self, arena: &'b A, key: K) -> Entry<'a, 'b, A, K, V> {
         if self.same(&key) {
             return Entry::Occupied(Occupied {
                 link: self
@@ -180,7 +183,7 @@ impl<K: Ord, V> Link<K, V> {
 
         match self.0 {
             None => Entry::Vacant(Vacant {
-                arena: arena.clone(),
+                arena,
                 key,
                 link: self,
             }),
@@ -195,13 +198,12 @@ impl<K: Ord, V> Link<K, V> {
     }
 }
 
-#[derive(Debug)]
-pub enum Entry<'a, K: 'a, V: 'a> {
-    Vacant(Vacant<'a, K, V>),
-    Occupied(Occupied<'a, K, V>),
+pub enum Entry<'a, 'b, A: Alloc<Node<A, K, V>> + 'a + 'b, K: 'a, V: 'a> {
+    Vacant(Vacant<'a, 'b, A, K, V>),
+    Occupied(Occupied<'a, A, K, V>),
 }
 
-impl<'a, K: Ord, V> Entry<'a, K, V> {
+impl<'a, 'b, A: Alloc<Node<A, K, V>>, K: Ord, V> Entry<'a, 'b, A, K, V> {
     pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Entry::Vacant(vacant) => vacant.insert(default),
@@ -232,21 +234,20 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     }
 }
 
-impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
+impl<'a, 'b, A: Alloc<Node<A, K, V>> + 'a + 'b, K: Ord, V: Default> Entry<'a, 'b, A, K, V> {
     pub fn or_default(self) -> &'a mut V {
         self.or_insert_with(Default::default)
     }
 }
 
-#[derive(Debug)]
-pub struct Vacant<'a, K: 'a, V: 'a> {
-    arena: Arena<Node<K, V>>,
+pub struct Vacant<'a, 'b, A: Alloc<Node<A, K, V>> + 'a + 'b, K: 'a, V: 'a> {
+    arena: &'b A,
     key: K,
     // This link MUST NOT has a node
-    link: &'a mut Link<K, V>,
+    link: &'a mut Link<A, K, V>,
 }
 
-impl<'a, K: Ord, V> Vacant<'a, K, V> {
+impl<'a, 'b, A: Alloc<Node<A, K, V>>, K: Ord, V> Vacant<'a, 'b, A, K, V> {
     pub fn key(&self) -> &K {
         &self.key
     }
@@ -261,20 +262,18 @@ impl<'a, K: Ord, V> Vacant<'a, K, V> {
     }
 }
 
-#[derive(Debug)]
-pub struct Occupied<'a, K: 'a, V: 'a> {
+pub struct Occupied<'a, A: Alloc<Node<A, K, V>> + 'a, K: 'a, V: 'a> {
     // This link MUST has a node
-    link: &'a mut Link<K, V>,
+    link: &'a mut Link<A, K, V>,
 }
 
-impl<'a, K: Ord, V> Occupied<'a, K, V> {
+impl<'a, A: Alloc<Node<A, K, V>>, K: Ord, V> Occupied<'a, A, K, V> {
     pub fn key(&self) -> &K {
         &self.link.0.as_ref().unwrap().key
     }
 
     pub fn remove_entry(self) -> (K, V) {
-        let node = self.link.0.take().unwrap();
-        let node = Bucket::into_inner(node);
+        let node = self.link.0.take().unwrap().unbox();
 
         (node.key, node.value)
     }

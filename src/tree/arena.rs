@@ -5,6 +5,8 @@ use std::ptr;
 use std::ops::{Deref, DerefMut};
 use std::fmt;
 
+use alloc::{Alloc, Boxed};
+
 pub struct Arena<T>(Rc<RefCell<ArenaData<T>>>);
 
 pub struct ArenaData<T> {
@@ -29,31 +31,6 @@ impl<T> Arena<T> {
             storage: vec![],
             empty: 0,
         })))
-    }
-
-    pub fn alloc(&self, data: T) -> Bucket<T> {
-        let mut arena = self.0.borrow_mut();
-
-        if arena.empty == 0 {
-            arena.empty = arena.storage.len();
-            arena.storage.push(Slot { empty: 0 });
-        }
-
-        let index = arena.empty;
-        let new_empty = unsafe {
-            let loc = arena.storage.get_mut(index).unwrap();
-            let new_empty = loc.empty;
-            loc.data = MD::new(data);
-            new_empty
-        };
-        arena.empty = new_empty;
-
-        drop(arena);
-
-        Bucket {
-            arena: Arena(self.0.clone()),
-            index,
-        }
     }
 
     fn free(&self, index: usize) {
@@ -94,6 +71,35 @@ impl<T> Arena<T> {
     }
 }
 
+impl<T> Alloc<T> for Arena<T> {
+    type Boxed = Bucket<T>;
+
+    fn alloc(&self, data: T) -> Bucket<T> {
+        let mut arena = self.0.borrow_mut();
+
+        if arena.empty == 0 {
+            arena.empty = arena.storage.len();
+            arena.storage.push(Slot { empty: 0 });
+        }
+
+        let index = arena.empty;
+        let new_empty = unsafe {
+            let loc = arena.storage.get_mut(index).unwrap();
+            let new_empty = loc.empty;
+            loc.data = MD::new(data);
+            new_empty
+        };
+        arena.empty = new_empty;
+
+        drop(arena);
+
+        Bucket {
+            arena: Arena(self.0.clone()),
+            index,
+        }
+    }
+}
+
 impl<T> Default for Arena<T> {
     fn default() -> Self {
         Arena::new()
@@ -112,8 +118,8 @@ impl<T> fmt::Debug for Arena<T> {
     }
 }
 
-impl<T> Bucket<T> {
-    pub fn into_inner(self) -> T {
+impl<T> Boxed<T> for Bucket<T> {
+    fn unbox(self) -> T {
         self.arena.get_move(self.index)
     }
 }
