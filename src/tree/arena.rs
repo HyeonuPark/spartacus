@@ -71,7 +71,7 @@ impl<T> Arena<T> {
     }
 }
 
-impl<T> Alloc<T> for Arena<T> {
+impl<T> Alloc for Arena<T> {
     type Boxed = Bucket<T>;
 
     fn alloc(&self, data: T) -> Bucket<T> {
@@ -118,7 +118,7 @@ impl<T> fmt::Debug for Arena<T> {
     }
 }
 
-impl<T> Boxed<T> for Bucket<T> {
+impl<T> Boxed for Bucket<T> {
     fn unbox(self) -> T {
         self.arena.get_move(self.index)
     }

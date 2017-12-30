@@ -3,4 +3,4 @@ mod arena;
 mod treap;
 
 pub use self::arena::{Arena, Bucket};
-pub use self::treap::{TreeMap, Entry, Vacant, Occupied};
+pub use self::treap::*;

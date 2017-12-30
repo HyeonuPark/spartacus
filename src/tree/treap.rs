@@ -1,23 +1,29 @@
-use std::mem::replace;
+use std::ops::Deref;
 use std::borrow::Borrow;
-use std::marker::PhantomData;
+use std::mem::replace;
 
 use rand::random;
 
 use alloc::{Alloc, Boxed};
 
-pub struct TreeMap<A: Alloc<Node<A, K, V>>, K, V> {
+#[derive(Debug)]
+pub struct TreeMap<A, B, K, V> where
+    A: Alloc<Boxed=B>,
+    B: Boxed + Deref<Target=Node<B, K, V>>,
+{
     arena: A,
-    root: Link<A, K, V>,
-    _phantom: PhantomData<(K, V)>,
+    root: Link<B>,
 }
 
-impl<A: Alloc<Node<A, K, V>>, K: Ord, V> TreeMap<A, K, V> {
+impl<A, B, K, V> TreeMap<A, B, K, V> where
+    A: Alloc<Boxed=B>,
+    B: Boxed + Deref<Target=Node<B, K, V>>,
+    K: Ord,
+{
     pub fn new() -> Self {
         TreeMap {
             arena: Default::default(),
             root: Link::new(),
-            _phantom: Default::default(),
         }
     }
 
@@ -33,67 +39,63 @@ impl<A: Alloc<Node<A, K, V>>, K: Ord, V> TreeMap<A, K, V> {
         self.root.0.is_none()
     }
 
-    pub fn get<Q>(&self, key: &Q) -> Option<&V>
-        where K: Borrow<Q>, Q: Ord + ?Sized
+    pub fn get<Q>(&self, key: &Q) -> Option<&V> where
+        K: Borrow<Q>, Q: Ord + ?Sized
     {
         self.root.get(key)
     }
 
-    pub fn contains_key<Q>(&self, key: &Q) -> bool
-        where K: Borrow<Q>, Q: Ord + ?Sized
+    pub fn contains_key<Q>(&self, key: &Q) -> bool where
+        K: Borrow<Q>, Q: Ord + ?Sized
     {
         self.root.get(key).is_some()
     }
 
-    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
-        where K: Borrow<Q>, Q: Ord + ?Sized
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V> where
+        K: Borrow<Q>, Q: Ord + ?Sized
     {
         self.root.get_mut(key)
     }
 
-    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
-        where K: Borrow<Q>, Q: Ord + ?Sized
-    {
-        self.root.remove(key)
-    }
-
-    pub fn entry(&mut self, key: K) -> Entry<A, K, V> {
+    pub fn entry(&mut self, key: K) -> Entry<A, B, K, V> {
         self.root.entry(&self.arena, key)
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         match self.root.entry(&self.arena, key) {
-            Entry::Occupied(mut occupied) => Some(occupied.insert(value)),
-            Entry::Vacant(vacant) => {
-                vacant.insert(value);
+            Entry::Occupied(mut o) => Some(o.insert(value)),
+            Entry::Vacant(v) => {
+                v.insert(value);
                 None
             }
         }
     }
-}
 
-impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Default for TreeMap<A, K, V> {
-    fn default() -> Self {
-        TreeMap::new()
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V> where
+        K: Borrow<Q>, Q: Ord + ?Sized
+    {
+        self.root.remove(key)
     }
 }
 
-struct Link<A: Alloc<Node<A, K, V>>, K, V>(Option<A::Boxed>, PhantomData<(K, V)>);
+#[derive(Debug)]
+pub struct Link<B: Boxed>(Option<B>);
 
-struct Node<A: Alloc<Node<A, K, V>>, K, V> {
+#[derive(Debug)]
+pub struct Node<B: Boxed + Deref<Target=Node<B, K, V>>, K, V> {
     weight: usize,
     key: K,
     value: V,
-    left: Link<A, K, V>,
-    right: Link<A, K, V>,
+    left: Link<B>,
+    right: Link<B>,
 }
 
-impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Link<A, K, V> {
+impl<B: Boxed + Deref<Target=Node<B, K, V>>, K: Ord, V> Link<B> {
     fn new() -> Self {
-        Link(None, Default::default())
+        Link(None)
     }
 
-    fn set(&mut self, arena: &A, key: K, value: V) {
+    fn set<A: Alloc<Boxed=B>>(&mut self, arena: &A, key: K, value: V) {
         self.0 = Some(arena.alloc(Node {
             weight: random(),
             key,
@@ -110,8 +112,8 @@ impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Link<A, K, V> {
         }
     }
 
-    fn same<Q>(&self, key: &Q) -> bool
-        where K: Borrow<Q>, Q: Ord + ?Sized
+    fn same<Q>(&self, key: &Q) -> bool where
+        K: Borrow<Q>, Q: Ord + ?Sized
     {
         match self.0 {
             None => false,
@@ -119,8 +121,8 @@ impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Link<A, K, V> {
         }
     }
 
-    fn get<Q>(&self, key: &Q) -> Option<&V>
-        where K: Borrow<Q>, Q: Ord + ?Sized
+    fn get<'s, Q>(&'s self, key: &Q) -> Option<&'s V> where
+        K: Borrow<Q> + 's, Q: Ord + ?Sized
     {
         match self.0 {
             None => None,
@@ -136,8 +138,8 @@ impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Link<A, K, V> {
         }
     }
 
-    fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
-        where K: Borrow<Q>, Q: Ord + ?Sized
+    fn get_mut<'s, Q>(&'s mut self, key: &Q) -> Option<&'s mut V> where
+        K: Borrow<Q> + 's, Q: Ord + ?Sized
     {
         match self.0 {
             None => None,
@@ -153,10 +155,9 @@ impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Link<A, K, V> {
         }
     }
 
-    fn remove<Q>(&mut self, key: &Q) -> Option<V>
-        where K: Borrow<Q>, Q: Ord + ?Sized
+    fn remove<Q>(&mut self, key: &Q) -> Option<V> where
+        K: Borrow<Q>, Q: Ord + ?Sized
     {
-
         if self.same(key) {
             let node = self.0.take().unwrap().unbox();
             return Some(node.value);
@@ -174,11 +175,11 @@ impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Link<A, K, V> {
         }
     }
 
-    fn entry<'a, 'b>(&'a mut self, arena: &'b A, key: K) -> Entry<'a, 'b, A, K, V> {
+    fn entry<'a, 'l, A>(&'l mut self, arena: &'a A, key: K) -> Entry<'a, 'l, A, B, K, V> where
+        'a: 'l, A: Alloc<Boxed=B> + 'a, B: 'l, K: 'l, V: 'l
+    {
         if self.same(&key) {
-            return Entry::Occupied(Occupied {
-                link: self
-            });
+            return Entry::Occupied(Occupied { link: self });
         }
 
         match self.0 {
@@ -198,56 +199,70 @@ impl<A: Alloc<Node<A, K, V>>, K: Ord, V> Link<A, K, V> {
     }
 }
 
-pub enum Entry<'a, 'b, A: Alloc<Node<A, K, V>> + 'a + 'b, K: 'a, V: 'a> {
-    Vacant(Vacant<'a, 'b, A, K, V>),
-    Occupied(Occupied<'a, A, K, V>),
+#[derive(Debug)]
+pub enum Entry<'a, 'l, A, B, K, V> where
+    'a: 'l,
+    A: Alloc<Boxed=B> + 'a,
+    B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
+    K: 'l,
+{
+    Vacant(Vacant<'a, 'l, A, B, K, V>),
+    Occupied(Occupied<'l, B, K, V>),
 }
 
-impl<'a, 'b, A: Alloc<Node<A, K, V>>, K: Ord, V> Entry<'a, 'b, A, K, V> {
-    pub fn or_insert(self, default: V) -> &'a mut V {
+impl<'a, 'l, A, B, K, V> Entry<'a, 'l, A, B, K, V> where
+    'a: 'l,
+    A: Alloc<Boxed=B> + 'a,
+    B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
+    K: Ord + 'l,
+{
+    pub fn or_insert(self, default: V) -> &'l mut V {
         match self {
-            Entry::Vacant(vacant) => vacant.insert(default),
-            Entry::Occupied(occupied) => occupied.into_mut(),
+            Entry::Vacant(v) => v.insert(default),
+            Entry::Occupied(o) => o.into_mut(),
         }
     }
 
-    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'l mut V {
         match self {
-            Entry::Vacant(vacant) => vacant.insert(default()),
-            Entry::Occupied(occupied) => occupied.into_mut(),
+            Entry::Vacant(v) => v.insert(default()),
+            Entry::Occupied(o) => o.into_mut(),
         }
     }
 
     pub fn key(&self) -> &K {
         match *self {
-            Entry::Vacant(ref vacant) => vacant.key(),
-            Entry::Occupied(ref occupied) => occupied.key(),
+            Entry::Vacant(ref v) => v.key(),
+            Entry::Occupied(ref o) => o.key(),
         }
     }
 
     pub fn and_modify<F: FnOnce(&mut V)>(mut self, f: F) -> Self {
-        if let Entry::Occupied(ref mut occupied) = self {
-            f(occupied.get_mut());
+        if let Entry::Occupied(ref mut o) = self {
+            f(o.get_mut());
         }
 
         self
     }
 }
 
-impl<'a, 'b, A: Alloc<Node<A, K, V>> + 'a + 'b, K: Ord, V: Default> Entry<'a, 'b, A, K, V> {
-    pub fn or_default(self) -> &'a mut V {
-        self.or_insert_with(Default::default)
-    }
-}
-
-pub struct Vacant<'a, 'b, A: Alloc<Node<A, K, V>> + 'a + 'b, K: 'a, V: 'a> {
-    arena: &'b A,
+#[derive(Debug)]
+pub struct Vacant<'a, 'l, A, B, K, V> where
+    'a: 'l,
+    A: Alloc<Boxed=B> + 'a,
+    B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
+{
+    arena: &'a A,
     key: K,
-    // This link MUST NOT has a node
-    link: &'a mut Link<A, K, V>,
+    link: &'l mut Link<B>,
 }
 
-impl<'a, 'b, A: Alloc<Node<A, K, V>>, K: Ord, V> Vacant<'a, 'b, A, K, V> {
+impl<'a, 'l, A, B, K, V> Vacant<'a, 'l, A, B, K, V> where
+    'a: 'l,
+    A: Alloc<Boxed=B> + 'a,
+    B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
+    K: Ord + 'l,
+{
     pub fn key(&self) -> &K {
         &self.key
     }
@@ -256,18 +271,24 @@ impl<'a, 'b, A: Alloc<Node<A, K, V>>, K: Ord, V> Vacant<'a, 'b, A, K, V> {
         self.key
     }
 
-    pub fn insert(self, value: V) -> &'a mut V {
-        self.link.set(&self.arena, self.key, value);
-        &mut self.link.0.as_mut().unwrap().value
+    pub fn insert(self, value: V) -> &'l mut V {
+        let Vacant { arena, key, link } = self;
+        link.set(arena, key, value);
+        &mut link.0.as_mut().unwrap().value
     }
 }
 
-pub struct Occupied<'a, A: Alloc<Node<A, K, V>> + 'a, K: 'a, V: 'a> {
-    // This link MUST has a node
-    link: &'a mut Link<A, K, V>,
+#[derive(Debug)]
+pub struct Occupied<'l, B, K, V> where
+    B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
+{
+    link: &'l mut Link<B>,
 }
 
-impl<'a, A: Alloc<Node<A, K, V>>, K: Ord, V> Occupied<'a, A, K, V> {
+impl<'l, B, K, V> Occupied<'l, B, K, V> where
+    B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
+    K: 'l,
+{
     pub fn key(&self) -> &K {
         &self.link.0.as_ref().unwrap().key
     }
@@ -286,7 +307,7 @@ impl<'a, A: Alloc<Node<A, K, V>>, K: Ord, V> Occupied<'a, A, K, V> {
         &mut self.link.0.as_mut().unwrap().value
     }
 
-    pub fn into_mut(self) -> &'a mut V {
+    pub fn into_mut(self) -> &'l mut V {
         &mut self.link.0.as_mut().unwrap().value
     }
 
