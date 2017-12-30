@@ -4,10 +4,10 @@ use std::marker::PhantomData;
 /// Abstracted typed allocator
 ///
 /// Similar to `std::heap::Alloc`, but more high-level and limited to single type
-pub trait Alloc: Default {
+pub trait Arena: Default {
     type Boxed: Boxed;
 
-    fn alloc(&self, value: <<Self as Alloc>::Boxed as Deref>::Target) -> Self::Boxed;
+    fn alloc(&self, value: <<Self as Arena>::Boxed as Deref>::Target) -> Self::Boxed;
 }
 
 // Abstracted allocated box
@@ -20,15 +20,15 @@ pub trait Boxed: Drop + Deref + DerefMut {
 
 /// Simple typed allocator, just a wrapper around `Box`
 /// This can be useful for comparison.
-pub struct BoxAlloc<T>(PhantomData<T>);
+pub struct BoxArena<T>(PhantomData<T>);
 
-impl<T> Default for BoxAlloc<T> {
+impl<T> Default for BoxArena<T> {
     fn default() -> Self {
-        BoxAlloc(Default::default())
+        BoxArena(Default::default())
     }
 }
 
-impl<T> Alloc for BoxAlloc<T> {
+impl<T> Arena for BoxArena<T> {
     type Boxed = Box<T>;
 
     fn alloc(&self, value: T) -> Box<T> {

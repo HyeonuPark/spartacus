@@ -4,11 +4,11 @@ use std::mem::replace;
 
 use rand::random;
 
-use alloc::{Alloc, Boxed};
+use arena::{Arena, Boxed};
 
 #[derive(Debug)]
 pub struct TreeMap<A, B, K, V> where
-    A: Alloc<Boxed=B>,
+    A: Arena<Boxed=B>,
     B: Boxed + Deref<Target=Node<B, K, V>>,
 {
     arena: A,
@@ -16,7 +16,7 @@ pub struct TreeMap<A, B, K, V> where
 }
 
 impl<A, B, K, V> TreeMap<A, B, K, V> where
-    A: Alloc<Boxed=B>,
+    A: Arena<Boxed=B>,
     B: Boxed + Deref<Target=Node<B, K, V>>,
     K: Ord,
 {
@@ -95,7 +95,7 @@ impl<B: Boxed + Deref<Target=Node<B, K, V>>, K: Ord, V> Link<B> {
         Link(None)
     }
 
-    fn set<A: Alloc<Boxed=B>>(&mut self, arena: &A, key: K, value: V) {
+    fn set<A: Arena<Boxed=B>>(&mut self, arena: &A, key: K, value: V) {
         self.0 = Some(arena.alloc(Node {
             weight: random(),
             key,
@@ -176,7 +176,7 @@ impl<B: Boxed + Deref<Target=Node<B, K, V>>, K: Ord, V> Link<B> {
     }
 
     fn entry<'a, 'l, A>(&'l mut self, arena: &'a A, key: K) -> Entry<'a, 'l, A, B, K, V> where
-        'a: 'l, A: Alloc<Boxed=B> + 'a, B: 'l, K: 'l, V: 'l
+        'a: 'l, A: Arena<Boxed=B> + 'a, B: 'l, K: 'l, V: 'l
     {
         if self.same(&key) {
             return Entry::Occupied(Occupied { link: self });
@@ -202,7 +202,7 @@ impl<B: Boxed + Deref<Target=Node<B, K, V>>, K: Ord, V> Link<B> {
 #[derive(Debug)]
 pub enum Entry<'a, 'l, A, B, K, V> where
     'a: 'l,
-    A: Alloc<Boxed=B> + 'a,
+    A: Arena<Boxed=B> + 'a,
     B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
     K: 'l,
 {
@@ -212,7 +212,7 @@ pub enum Entry<'a, 'l, A, B, K, V> where
 
 impl<'a, 'l, A, B, K, V> Entry<'a, 'l, A, B, K, V> where
     'a: 'l,
-    A: Alloc<Boxed=B> + 'a,
+    A: Arena<Boxed=B> + 'a,
     B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
     K: Ord + 'l,
 {
@@ -249,7 +249,7 @@ impl<'a, 'l, A, B, K, V> Entry<'a, 'l, A, B, K, V> where
 #[derive(Debug)]
 pub struct Vacant<'a, 'l, A, B, K, V> where
     'a: 'l,
-    A: Alloc<Boxed=B> + 'a,
+    A: Arena<Boxed=B> + 'a,
     B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
 {
     arena: &'a A,
@@ -259,7 +259,7 @@ pub struct Vacant<'a, 'l, A, B, K, V> where
 
 impl<'a, 'l, A, B, K, V> Vacant<'a, 'l, A, B, K, V> where
     'a: 'l,
-    A: Alloc<Boxed=B> + 'a,
+    A: Arena<Boxed=B> + 'a,
     B: Boxed + Deref<Target=Node<B, K, V>> + 'l,
     K: Ord + 'l,
 {

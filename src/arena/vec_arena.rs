@@ -5,9 +5,9 @@ use std::ptr;
 use std::ops::{Deref, DerefMut};
 use std::fmt;
 
-use alloc::{Alloc, Boxed};
+use super::{Arena, Boxed};
 
-pub struct Arena<T>(Rc<RefCell<ArenaData<T>>>);
+pub struct VecArena<T>(Rc<RefCell<ArenaData<T>>>);
 
 pub struct ArenaData<T> {
     storage: Vec<Slot<T>>,
@@ -16,7 +16,7 @@ pub struct ArenaData<T> {
 
 #[derive(Clone)]
 pub struct Bucket<T> {
-    arena: Arena<T>,
+    arena: VecArena<T>,
     index: usize,
 }
 
@@ -25,9 +25,9 @@ union Slot<T> {
     empty: usize,
 }
 
-impl<T> Arena<T> {
+impl<T> VecArena<T> {
     pub fn new() -> Self {
-        Arena(Rc::new(RefCell::new(ArenaData {
+        VecArena(Rc::new(RefCell::new(ArenaData {
             storage: vec![],
             empty: 0,
         })))
@@ -71,7 +71,7 @@ impl<T> Arena<T> {
     }
 }
 
-impl<T> Alloc for Arena<T> {
+impl<T> Arena for VecArena<T> {
     type Boxed = Bucket<T>;
 
     fn alloc(&self, data: T) -> Bucket<T> {
@@ -94,25 +94,25 @@ impl<T> Alloc for Arena<T> {
         drop(arena);
 
         Bucket {
-            arena: Arena(self.0.clone()),
+            arena: VecArena(self.0.clone()),
             index,
         }
     }
 }
 
-impl<T> Default for Arena<T> {
+impl<T> Default for VecArena<T> {
     fn default() -> Self {
-        Arena::new()
+        VecArena::new()
     }
 }
 
-impl<T> Clone for Arena<T> {
+impl<T> Clone for VecArena<T> {
     fn clone(&self) -> Self {
-        Arena(Rc::clone(&self.0))
+        VecArena(Rc::clone(&self.0))
     }
 }
 
-impl<T> fmt::Debug for Arena<T> {
+impl<T> fmt::Debug for VecArena<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Arena {{ .. }}")
     }
