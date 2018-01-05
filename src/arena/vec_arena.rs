@@ -119,8 +119,8 @@ impl<T> fmt::Debug for VecArena<T> {
 }
 
 impl<T> Boxed for Bucket<T> {
-    fn unbox(self) -> T {
-        self.arena.get_move(self.index)
+    fn unbox(boxed: Self) -> T {
+        boxed.arena.get_move(boxed.index)
     }
 }
 

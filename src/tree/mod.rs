@@ -1,4 +1,4 @@
 
-mod bst;
+mod map;
 
-pub mod treap;
+pub use self::map::{TreeMap, Regulator};

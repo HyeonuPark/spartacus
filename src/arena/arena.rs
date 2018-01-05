@@ -15,7 +15,7 @@ pub trait Arena: Default {
 // Similar to `Box`, this trait represents a wrapper type whose value is allocated "somewhere"
 // and release its memory when dropped.
 pub trait Boxed: Drop + Deref + DerefMut {
-    fn unbox(self) -> <Self as Deref>::Target;
+    fn unbox(boxed: Self) -> <Self as Deref>::Target;
 }
 
 /// Simple typed allocator, just a wrapper around `Box`
@@ -37,7 +37,7 @@ impl<T> Arena for BoxArena<T> {
 }
 
 impl<T> Boxed for Box<T> {
-    fn unbox(self) -> T {
-        *self
+    fn unbox(boxed: Self) -> T {
+        *boxed
     }
 }
