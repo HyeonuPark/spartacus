@@ -1,25 +1,25 @@
-use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cmp::Ordering::{self, Less, Equal, Greater};
 use std::mem::swap;
+use std::marker::PhantomData;
 
 use arena::{Arena, Boxed};
 use tree::Regulator;
 
-pub struct TreeMap<K, V, A, R> where
+pub struct TreeMap<K, V, A, B, R> where
     K: Ord,
-    A: Arena,
-    A::Boxed: Boxed + Deref<Target=Node<K, V, A::Boxed, R>>,
+    A: Arena<Node<K, V, B, R>, B>,
+    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
 {
     arena: A,
-    root: Edge<K, V, A::Boxed, R>,
+    root: Edge<K, V, B, R>,
 }
 
-impl<K, V, A, R> TreeMap<K, V, A, R> where
+impl<K, V, A, B, R> TreeMap<K, V, A, B, R> where
     K: Ord,
-    A: Arena,
-    A::Boxed: Boxed + Deref<Target=Node<K, V, A::Boxed, R>>,
+    A: Arena<Node<K, V, B, R>, B>,
+    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
 {
     pub fn new() -> Self {
@@ -71,9 +71,20 @@ impl<K, V, A, R> TreeMap<K, V, A, R> where
     }
 }
 
+impl<K, V, A, B, R> Default for TreeMap<K, V, A, B, R> where
+    K: Ord,
+    A: Arena<Node<K, V, B, R>, B>,
+    B: Boxed<Node<K, V, B, R>>,
+    R: Regulator,
+{
+    fn default() -> Self {
+        TreeMap::new()
+    }
+}
+
 pub struct Node<K, V, B, R> where
     K: Ord,
-    B: Boxed + Deref<Target=Node<K, V, B, R>>,
+    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
 {
     key: K,
@@ -85,7 +96,7 @@ pub struct Node<K, V, B, R> where
 
 impl<K, V, B, R> Node<K, V, B, R> where
     K: Ord,
-    B: Boxed + Deref<Target=Node<K, V, B, R>>,
+    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
 {
     fn new(key: K, value: V) -> Self {
@@ -101,19 +112,23 @@ impl<K, V, B, R> Node<K, V, B, R> where
 
 pub struct Edge<K, V, B, R> where
     K: Ord,
-    B: Boxed + Deref<Target=Node<K, V, B, R>>,
+    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
 {
     pub node: Option<B>,
+    _marker: PhantomData<(K, V, R)>,
 }
 
 impl<K, V, B, R> Edge<K, V, B, R> where
     K: Ord,
-    B: Boxed + Deref<Target=Node<K, V, B, R>>,
+    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
 {
     fn new() -> Self {
-        Edge { node: None }
+        Edge {
+            node: None,
+            _marker: Default::default(),
+        }
     }
 
     fn len(&self) -> usize {

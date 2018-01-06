@@ -4,18 +4,16 @@ use std::marker::PhantomData;
 /// Abstracted typed allocator
 ///
 /// Similar to `std::heap::Alloc`, but more high-level and limited to single type
-pub trait Arena: Default {
-    type Boxed: Boxed;
-
-    fn alloc(&self, value: <<Self as Arena>::Boxed as Deref>::Target) -> Self::Boxed;
+pub trait Arena<T, B>: Default where B: Boxed<T> {
+    fn alloc(&self, value: T) -> B;
 }
 
 // Abstracted allocated box
 //
 // Similar to `Box`, this trait represents a wrapper type whose value is allocated "somewhere"
 // and release its memory when dropped.
-pub trait Boxed: Drop + Deref + DerefMut {
-    fn unbox(boxed: Self) -> <Self as Deref>::Target;
+pub trait Boxed<T>: Drop + Deref<Target=T> + DerefMut {
+    fn unbox(boxed: Self) -> T;
 }
 
 /// Simple typed allocator, just a wrapper around `Box`
@@ -28,15 +26,13 @@ impl<T> Default for BoxArena<T> {
     }
 }
 
-impl<T> Arena for BoxArena<T> {
-    type Boxed = Box<T>;
-
+impl<T> Arena<T, Box<T>> for BoxArena<T> {
     fn alloc(&self, value: T) -> Box<T> {
         Box::new(value)
     }
 }
 
-impl<T> Boxed for Box<T> {
+impl<T> Boxed<T> for Box<T> {
     fn unbox(boxed: Self) -> T {
         *boxed
     }

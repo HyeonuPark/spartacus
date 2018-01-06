@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use rand::random;
 
 use arena::Boxed;
@@ -18,7 +16,7 @@ impl Default for RevTreap {
 impl Regulator for RevTreap {
     fn update<K, V, B>(node: &mut B) where
         K: Ord,
-        B: Boxed + Deref<Target=Node<K, V, B, Self>>
+        B: Boxed<Node<K, V, B, Self>>
     {
         let root = node.regulator.0;
 

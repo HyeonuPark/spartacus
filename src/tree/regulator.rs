@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::mem::replace;
 
 use arena::Boxed;
@@ -9,7 +8,7 @@ pub struct RotateEmptyLeg;
 
 pub fn rotate_left<K, V, B, R>(root: &mut B) -> Result<(), RotateEmptyLeg> where
     K: Ord,
-    B: Boxed + Deref<Target=Node<K, V, B, R>>,
+    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
 {
     //
@@ -38,7 +37,7 @@ pub fn rotate_left<K, V, B, R>(root: &mut B) -> Result<(), RotateEmptyLeg> where
 
 pub fn rotate_right<K, V, B, R>(root: &mut B) -> Result<(), RotateEmptyLeg> where
     K: Ord,
-    B: Boxed + Deref<Target=Node<K, V, B, R>>,
+    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
 {
     //
@@ -68,7 +67,7 @@ pub fn rotate_right<K, V, B, R>(root: &mut B) -> Result<(), RotateEmptyLeg> wher
 pub trait Regulator: Default {
     fn update<K, V, B>(node: &mut B) where
         K: Ord,
-        B: Boxed + Deref<Target=Node<K, V, B, Self>>;
+        B: Boxed<Node<K, V, B, Self>>;
 }
 
 #[derive(Default)]
@@ -77,6 +76,6 @@ pub struct Noop;
 impl Regulator for Noop {
     fn update<K, V, B>(_node: &mut B) where
         K: Ord,
-        B: Boxed + Deref<Target=Node<K, V, B, Self>>
+        B: Boxed<Node<K, V, B, Self>>
     {}
 }

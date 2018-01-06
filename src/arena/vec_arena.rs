@@ -71,9 +71,7 @@ impl<T> VecArena<T> {
     }
 }
 
-impl<T> Arena for VecArena<T> {
-    type Boxed = Bucket<T>;
-
+impl<T> Arena<T, Bucket<T>> for VecArena<T> {
     fn alloc(&self, data: T) -> Bucket<T> {
         let mut arena = self.0.borrow_mut();
 
@@ -118,9 +116,9 @@ impl<T> fmt::Debug for VecArena<T> {
     }
 }
 
-impl<T> Boxed for Bucket<T> {
-    fn unbox(boxed: Self) -> T {
-        boxed.arena.get_move(boxed.index)
+impl<T> Drop for Bucket<T> {
+    fn drop(&mut self) {
+        self.arena.free(self.index)
     }
 }
 
@@ -138,9 +136,9 @@ impl<T> DerefMut for Bucket<T> {
     }
 }
 
-impl<T> Drop for Bucket<T> {
-    fn drop(&mut self) {
-        self.arena.free(self.index)
+impl<T> Boxed<T> for Bucket<T> {
+    fn unbox(boxed: Self) -> T {
+        boxed.arena.get_move(boxed.index)
     }
 }
 
