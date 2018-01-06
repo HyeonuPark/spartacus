@@ -72,9 +72,9 @@ pub trait Regulator: Default {
 }
 
 #[derive(Default)]
-pub struct NoopRegulator;
+pub struct Noop;
 
-impl Regulator for NoopRegulator {
+impl Regulator for Noop {
     fn update<K, V, B>(_node: &mut B) where
         K: Ord,
         B: Boxed + Deref<Target=Node<K, V, B, Self>>

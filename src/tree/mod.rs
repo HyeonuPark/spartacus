@@ -7,6 +7,6 @@ mod rev_treap;
 // mod avl;
 
 pub use self::map::{TreeMap, Node};
-pub use self::regulator::{Regulator, NoopRegulator, rotate_left, rotate_right};
+pub use self::regulator::{Regulator, Noop, rotate_left, rotate_right};
 
 pub use self::rev_treap::RevTreap;

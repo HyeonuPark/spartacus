@@ -1,5 +1,6 @@
 
 mod arena;
-pub use self::arena::{Arena, Boxed};
+pub use self::arena::{Arena, Boxed, BoxArena};
 
-pub mod vec_arena;
+mod vec_arena;
+pub use self::vec_arena::VecArena;
