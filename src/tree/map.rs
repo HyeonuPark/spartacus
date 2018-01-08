@@ -6,21 +6,60 @@ use std::marker::PhantomData;
 use arena::{Arena, Boxed};
 use tree::Regulator;
 
-pub struct TreeMap<K, V, A, B, R> where
-    K: Ord,
-    A: Arena<Node<K, V, B, R>, B>,
-    B: Boxed<Node<K, V, B, R>>,
-    R: Regulator,
-{
-    arena: A,
-    root: Edge<K, V, B, R>,
+#[macro_export]
+macro_rules! treemap {
+    ($name:ident, $K:ty, $V:ty, $R:ty, $A:ident, $B:ident, $I:ident) => (
+        type $name = TreeMap<$K, $V, $R, $A<$crate::tree::Node<$K, $V, $R, $I>>, $I>;
+
+        struct $I($B<$crate::tree::Node<$K, $V, $R, $I>>);
+
+        impl ::std::ops::Deref for $I {
+            type Target = $crate::tree::Node<$K, $V, $R, $I>;
+
+            fn deref(&self) -> &$crate::tree::Node<$K, $V, $R, $I> {
+                &*self.0
+            }
+        }
+
+        impl ::std::ops::DerefMut for $I {
+            fn deref_mut(&mut self) -> &mut $crate::tree::Node<$K, $V, $R, $I> {
+                &mut *self.0
+            }
+        }
+
+        impl $crate::arena::Boxed<$crate::tree::Node<$K, $V, $R, $I>> for $I {
+            fn unbox(boxed: Self) -> $crate::tree::Node<$K, $V, $R, $I> {
+                type B = $B<$crate::tree::Node<$K, $V, $R, $I>>;
+
+                B::unbox(boxed.0)
+            }
+        }
+
+        impl $crate::tree::Indirect<$K, $V, $R> for $I {
+            type Inner = $B<$crate::tree::Node<$K, $V, $R, $I>>;
+
+            fn new(b: Self::Inner) -> Self {
+                $I(b)
+            }
+        }
+    );
 }
 
-impl<K, V, A, B, R> TreeMap<K, V, A, B, R> where
+pub struct TreeMap<K, V, R, A, I> where
     K: Ord,
-    A: Arena<Node<K, V, B, R>, B>,
-    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
+    A: Arena<Node<K, V, R, I>, I::Inner>,
+    I: Indirect<K, V, R>,
+{
+    arena: A,
+    root: Edge<K, V, R, I>,
+}
+
+impl<K, V, R, A, I> TreeMap<K, V, R, A, I> where
+    K: Ord,
+    R: Regulator,
+    A: Arena<Node<K, V, R, I>, I::Inner>,
+    I: Indirect<K, V, R>,
 {
     pub fn new() -> Self {
         TreeMap {
@@ -67,37 +106,47 @@ impl<K, V, A, B, R> TreeMap<K, V, A, B, R> where
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         let node = self.arena.alloc(Node::new(key, value));
-        self.root.insert(node).map(|node| Boxed::unbox(node).value)
+        self.root.insert(I::new(node)).map(|node| Boxed::unbox(node).value)
     }
 }
 
-impl<K, V, A, B, R> Default for TreeMap<K, V, A, B, R> where
+impl<K, V, R, A, I> Default for TreeMap<K, V, R, A, I> where
     K: Ord,
-    A: Arena<Node<K, V, B, R>, B>,
-    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
+    A: Arena<Node<K, V, R, I>, I::Inner>,
+    I: Indirect<K, V, R>,
 {
     fn default() -> Self {
         TreeMap::new()
     }
 }
 
-pub struct Node<K, V, B, R> where
+pub trait Indirect<K, V, R>: Boxed<Node<K, V, R, Self>> where
+    Self: Sized,
     K: Ord,
-    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
+{
+    type Inner: Boxed<Node<K, V, R, Self>>;
+
+    fn new(inner: Self::Inner) -> Self;
+}
+
+pub struct Node<K, V, R, I> where
+    K: Ord,
+    R: Regulator,
+    I: Indirect<K, V, R>,
 {
     key: K,
     value: V,
-    pub left: Edge<K, V, B, R>,
-    pub right: Edge<K, V, B, R>,
+    pub left: Edge<K, V, R, I>,
+    pub right: Edge<K, V, R, I>,
     pub regulator: R,
 }
 
-impl<K, V, B, R> Node<K, V, B, R> where
+impl<K, V, R, I> Node<K, V, R, I> where
     K: Ord,
-    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
+    I: Indirect<K, V, R>,
 {
     fn new(key: K, value: V) -> Self {
         Node {
@@ -110,19 +159,19 @@ impl<K, V, B, R> Node<K, V, B, R> where
     }
 }
 
-pub struct Edge<K, V, B, R> where
+pub struct Edge<K, V, R, I> where
     K: Ord,
-    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
+    I: Indirect<K, V, R>,
 {
-    pub node: Option<B>,
+    pub node: Option<I>,
     _marker: PhantomData<(K, V, R)>,
 }
 
-impl<K, V, B, R> Edge<K, V, B, R> where
+impl<K, V, R, I> Edge<K, V, R, I> where
     K: Ord,
-    B: Boxed<Node<K, V, B, R>>,
     R: Regulator,
+    I: Indirect<K, V, R>,
 {
     fn new() -> Self {
         Edge {
@@ -161,7 +210,7 @@ impl<K, V, B, R> Edge<K, V, B, R> where
         }
     }
 
-    fn get<Q>(&self, key: &Q) -> Option<&B> where
+    fn get<Q>(&self, key: &Q) -> Option<&I> where
         K: Borrow<Q>, Q: Ord + ?Sized
     {
         match self.cmp_key(key) {
@@ -174,7 +223,7 @@ impl<K, V, B, R> Edge<K, V, B, R> where
         }
     }
 
-    fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut B> where
+    fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut I> where
         K: Borrow<Q>, Q: Ord + ?Sized
     {
         match self.cmp_key(key) {
@@ -187,7 +236,7 @@ impl<K, V, B, R> Edge<K, V, B, R> where
         }
     }
 
-    fn remove<Q>(&mut self, key: &Q) -> Option<B> where
+    fn remove<Q>(&mut self, key: &Q) -> Option<I> where
         K: Borrow<Q>, Q: Ord + ?Sized
     {
         let child = match self.cmp_key(key) {
@@ -209,7 +258,7 @@ impl<K, V, B, R> Edge<K, V, B, R> where
         child
     }
 
-    fn insert(&mut self, mut newbie: B) -> Option<B> {
+    fn insert(&mut self, mut newbie: I) -> Option<I> {
         let res = match self.node {
             None => {
                 self.node = Some(newbie);

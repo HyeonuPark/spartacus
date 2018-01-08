@@ -1,7 +1,6 @@
 use rand::random;
 
-use arena::Boxed;
-use tree::{Regulator, Node, rotate_left, rotate_right};
+use tree::{Regulator, Indirect, rotate_left, rotate_right};
 
 /// Like treap, but use tree-rotation to maintain balance.
 #[derive(Debug, Clone, Copy)]
@@ -14,9 +13,9 @@ impl Default for RevTreap {
 }
 
 impl Regulator for RevTreap {
-    fn update<K, V, B>(node: &mut B) where
+    fn update<K, V, I>(node: &mut I) where
         K: Ord,
-        B: Boxed<Node<K, V, B, Self>>
+        I: Indirect<K, V, Self>,
     {
         let root = node.regulator.0;
 

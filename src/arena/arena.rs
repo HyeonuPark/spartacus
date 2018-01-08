@@ -12,7 +12,7 @@ pub trait Arena<T, B>: Default where B: Boxed<T> {
 //
 // Similar to `Box`, this trait represents a wrapper type whose value is allocated "somewhere"
 // and release its memory when dropped.
-pub trait Boxed<T>: Drop + Deref<Target=T> + DerefMut {
+pub trait Boxed<T>: Deref<Target=T> + DerefMut {
     fn unbox(boxed: Self) -> T;
 }
 
