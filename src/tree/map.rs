@@ -285,3 +285,21 @@ impl<K, V, R, I> Edge<K, V, R, I> where
         res
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use arena::vec_arena::{VecArena, Bucket};
+//     use tree::Noop;
+//
+//     #[test]
+//     fn test_vec_arena_tree() {
+//         treemap!(Map, usize, usize, Noop, VecArena, Bucket, I);
+//
+//         let mut map = Map::default();
+//
+//         map.insert(1, 1);
+//
+//         println!("{}", map.get(&1).unwrap());
+//     }
+// }

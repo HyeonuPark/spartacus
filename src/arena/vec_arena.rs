@@ -4,6 +4,7 @@ use std::mem::ManuallyDrop as MD;
 use std::ptr;
 use std::ops::{Deref, DerefMut};
 use std::fmt;
+use std::usize;
 
 use super::{Arena, Boxed};
 
@@ -29,7 +30,7 @@ impl<T> VecArena<T> {
     pub fn new() -> Self {
         VecArena(Rc::new(RefCell::new(ArenaData {
             storage: vec![],
-            empty: 0,
+            empty: usize::MAX,
         })))
     }
 
@@ -75,19 +76,19 @@ impl<T> Arena<T, Bucket<T>> for VecArena<T> {
     fn alloc(&self, data: T) -> Bucket<T> {
         let mut arena = self.0.borrow_mut();
 
-        if arena.empty == 0 {
-            arena.empty = arena.storage.len();
+        if arena.empty == usize::MAX {
             arena.storage.push(Slot { empty: 0 });
+            arena.empty = 0;
         }
 
         let index = arena.empty;
-        let new_empty = unsafe {
-            let loc = arena.storage.get_mut(index).unwrap();
+        arena.empty = unsafe {
+            let loc = arena.storage.get_mut(index)
+                .expect("Failed to get arena storage");
             let new_empty = loc.empty;
             loc.data = MD::new(data);
             new_empty
         };
-        arena.empty = new_empty;
 
         drop(arena);
 

@@ -127,63 +127,63 @@ treemap!{VecTreap, usize, usize, RevTreap, VecArena, Bucket, I4}
 map_insert_rand_bench!{std_btree_insert_rand_100, 100, StdBTree}
 map_insert_rand_bench!{box_bst_insert_rand_100,   100, BoxBst}
 map_insert_rand_bench!{box_treap_insert_rand_100, 100, BoxTreap}
-// map_insert_rand_bench!{vec_bst_insert_rand_100,   100, VecBst}
-// map_insert_rand_bench!{vec_treap_insert_rand_100, 100, VecTreap}
+map_insert_rand_bench!{vec_bst_insert_rand_100,   100, VecBst}
+map_insert_rand_bench!{vec_treap_insert_rand_100, 100, VecTreap}
 
 map_insert_rand_bench!{std_btree_insert_rand_10000, 10000, StdBTree}
 map_insert_rand_bench!{box_bst_insert_rand_10000,   10000, BoxBst}
 map_insert_rand_bench!{box_treap_insert_rand_10000, 10000, BoxTreap}
-// map_insert_rand_bench!{vec_bst_insert_rand_10000,   10000, VecBst}
-// map_insert_rand_bench!{vec_treap_insert_rand_10000, 10000, VecTreap}
+map_insert_rand_bench!{vec_bst_insert_rand_10000,   10000, VecBst}
+map_insert_rand_bench!{vec_treap_insert_rand_10000, 10000, VecTreap}
 
 map_insert_rand_bench!{std_btree_insert_rand_1000000, 1000000, StdBTree}
 map_insert_rand_bench!{box_treap_insert_rand_1000000, 1000000, BoxTreap}
-// map_insert_rand_bench!{vec_treap_insert_rand_1000000, 1000000, VecTreap}
+map_insert_rand_bench!{vec_treap_insert_rand_1000000, 1000000, VecTreap}
 
 map_insert_seq_bench!{std_btree_insert_seq_100, 100, StdBTree}
 map_insert_seq_bench!{box_bst_insert_seq_100,   100, BoxBst}
 map_insert_seq_bench!{box_treap_insert_seq_100, 100, BoxTreap}
-// map_insert_seq_bench!{vec_bst_insert_seq_100,   100, VecBst}
-// map_insert_seq_bench!{vec_treap_insert_seq_100, 100, VecTreap}
+map_insert_seq_bench!{vec_bst_insert_seq_100,   100, VecBst}
+map_insert_seq_bench!{vec_treap_insert_seq_100, 100, VecTreap}
 
 map_insert_seq_bench!{std_btree_insert_seq_10000, 10000, StdBTree}
 map_insert_seq_bench!{box_bst_insert_seq_10000,   10000, BoxBst}
 map_insert_seq_bench!{box_treap_insert_seq_10000, 10000, BoxTreap}
-// map_insert_seq_bench!{vec_bst_insert_seq_10000,   10000, VecBst}
-// map_insert_seq_bench!{vec_treap_insert_seq_10000, 10000, VecTreap}
+map_insert_seq_bench!{vec_bst_insert_seq_10000,   10000, VecBst}
+map_insert_seq_bench!{vec_treap_insert_seq_10000, 10000, VecTreap}
 
 map_insert_seq_bench!{std_btree_insert_seq_1000000, 1000000, StdBTree}
 map_insert_seq_bench!{box_treap_insert_seq_1000000, 1000000, BoxTreap}
-// map_insert_seq_bench!{vec_treap_insert_seq_1000000, 1000000, VecTreap}
+map_insert_seq_bench!{vec_treap_insert_seq_1000000, 1000000, VecTreap}
 
 map_find_rand_bench!{std_btree_find_rand_100, 100, StdBTree}
 map_find_rand_bench!{box_bst_find_rand_100,   100, BoxBst}
 map_find_rand_bench!{box_treap_find_rand_100, 100, BoxTreap}
-// map_find_rand_bench!{vec_bst_find_rand_100,   100, VecBst}
-// map_find_rand_bench!{vec_treap_find_rand_100, 100, VecTreap}
+map_find_rand_bench!{vec_bst_find_rand_100,   100, VecBst}
+map_find_rand_bench!{vec_treap_find_rand_100, 100, VecTreap}
 
 map_find_rand_bench!{std_btree_find_rand_10000, 10000, StdBTree}
 map_find_rand_bench!{box_bst_find_rand_10000,   10000, BoxBst}
 map_find_rand_bench!{box_treap_find_rand_10000, 10000, BoxTreap}
-// map_find_rand_bench!{vec_bst_find_rand_10000,   10000, VecBst}
-// map_find_rand_bench!{vec_treap_find_rand_10000, 10000, VecTreap}
+map_find_rand_bench!{vec_bst_find_rand_10000,   10000, VecBst}
+map_find_rand_bench!{vec_treap_find_rand_10000, 10000, VecTreap}
 
 map_find_rand_bench!{std_btree_find_rand_1000000, 1000000, StdBTree}
 map_find_rand_bench!{box_treap_find_rand_1000000, 1000000, BoxTreap}
-// map_find_rand_bench!{vec_treap_find_rand_1000000, 1000000, VecTreap}
+map_find_rand_bench!{vec_treap_find_rand_1000000, 1000000, VecTreap}
 
 map_find_seq_bench!{std_btree_find_seq_100, 100, StdBTree}
 map_find_seq_bench!{box_bst_find_seq_100,   100, BoxBst}
 map_find_seq_bench!{box_treap_find_seq_100, 100, BoxTreap}
-// map_find_seq_bench!{vec_bst_find_seq_100,   100, VecBst}
-// map_find_seq_bench!{vec_treap_find_seq_100, 100, VecTreap}
+map_find_seq_bench!{vec_bst_find_seq_100,   100, VecBst}
+map_find_seq_bench!{vec_treap_find_seq_100, 100, VecTreap}
 
 map_find_seq_bench!{std_btree_find_seq_10000, 10000, StdBTree}
 map_find_seq_bench!{box_bst_find_seq_10000,   10000, BoxBst}
 map_find_seq_bench!{box_treap_find_seq_10000, 10000, BoxTreap}
-// map_find_seq_bench!{vec_bst_find_seq_10000,   10000, VecBst}
-// map_find_seq_bench!{vec_treap_find_seq_10000, 10000, VecTreap}
+map_find_seq_bench!{vec_bst_find_seq_10000,   10000, VecBst}
+map_find_seq_bench!{vec_treap_find_seq_10000, 10000, VecTreap}
 
 map_find_seq_bench!{std_btree_find_seq_1000000, 1000000, StdBTree}
 map_find_seq_bench!{box_treap_find_seq_1000000, 1000000, BoxTreap}
-// map_find_seq_bench!{vec_treap_find_seq_1000000, 1000000, VecTreap}
+map_find_seq_bench!{vec_treap_find_seq_1000000, 1000000, VecTreap}
