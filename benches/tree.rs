@@ -128,8 +128,6 @@ macro_rules! map_find_seq_bench {
     )
 }
 
-// Currently `VecArena` crashes
-
 type StdBTree = BTreeMap<usize, usize>;
 
 treemap!{BoxBst, usize, usize, Noop, BoxArena, Box, I1}

@@ -25,13 +25,13 @@ impl Regulator for RevTreap {
 
         let mut dir = Dir::Nope;
 
-        if let Some(ref left) = node.left.node {
+        if let Some(ref left) = node.left {
             if left.regulator.0 > root {
                 dir = Dir::Left;
             }
         }
 
-        if let Some(ref right) = node.right.node {
+        if let Some(ref right) = node.right {
             if right.regulator.0 > root {
                 dir = Dir::Right;
             }

@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 use std::fmt;
 use std::usize;
 
-use super::{Arena, Boxed};
+use super::{Arena, Boxed, UnsafeBoxed};
 
 pub struct VecArena<T>(Rc<RefCell<ArenaData<T>>>);
 
@@ -24,6 +24,11 @@ pub struct Bucket<T> {
 union Slot<T> {
     data: MD<T>,
     empty: usize,
+}
+
+pub struct UnsafeBucket<T> {
+    arena: VecArena<T>,
+    index: usize,
 }
 
 impl<T> VecArena<T> {
@@ -138,13 +143,28 @@ impl<T> DerefMut for Bucket<T> {
 }
 
 impl<T> Boxed<T> for Bucket<T> {
+    type Unsafe = UnsafeBucket<T>;
+
     fn unbox(boxed: Self) -> T {
         boxed.arena.get_move(boxed.index)
+    }
+
+    fn to_unsafe(boxed: &Self) -> Self::Unsafe {
+        UnsafeBucket {
+            arena: boxed.arena.clone(),
+            index: boxed.index,
+        }
     }
 }
 
 impl<T: fmt::Debug> fmt::Debug for Bucket<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.arena.get(self.index).fmt(f)
+    }
+}
+
+impl<T> UnsafeBoxed<T> for UnsafeBucket<T> {
+    unsafe fn get(&self) -> &T {
+        &*self.arena.get_ptr(self.index)
     }
 }

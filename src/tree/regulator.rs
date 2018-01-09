@@ -18,18 +18,18 @@ pub fn rotate_left<K, V, R, I>(root: &mut I) -> Result<(), RotateEmptyLeg> where
     //     C   D    A   C
     //
 
-    let node_b = match root.right.node.take() {
+    let node_b = match root.right.take() {
         None => Err(RotateEmptyLeg)?,
         Some(node) => node,
     };
 
     let mut node_r = replace(root, node_b);
 
-    let edge_c = root.left.node.take();
+    let edge_c = root.left.take();
 
-    node_r.right.node = edge_c;
+    node_r.right = edge_c;
 
-    root.left.node = Some(node_r);
+    root.left = Some(node_r);
 
     Ok(())
 }
@@ -47,18 +47,18 @@ pub fn rotate_right<K, V, R, I>(root: &mut I) -> Result<(), RotateEmptyLeg> wher
     // C   D            D   B
     //
 
-    let node_a = match root.left.node.take() {
+    let node_a = match root.left.take() {
         None => Err(RotateEmptyLeg)?,
         Some(node) => node,
     };
 
     let mut node_r = replace(root, node_a);
 
-    let edge_d = root.right.node.take();
+    let edge_d = root.right.take();
 
-    node_r.left.node = edge_d;
+    node_r.left = edge_d;
 
-    root.right.node = Some(node_r);
+    root.right = Some(node_r);
 
     Ok(())
 }
