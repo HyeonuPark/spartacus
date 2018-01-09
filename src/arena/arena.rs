@@ -16,13 +16,14 @@ pub trait Boxed<T>: Deref<Target=T> + DerefMut {
     type Unsafe: UnsafeBoxed<T>;
 
     fn unbox(boxed: Self) -> T;
-    fn to_unsafe(boxed: &Self) -> Self::Unsafe;
+    fn to_unsafe(boxed: &mut Self) -> Self::Unsafe;
 }
 
 /// Conceptually a raw pointer to allocated box.
 /// mainly for up-reference for tree.
 pub trait UnsafeBoxed<T> {
     unsafe fn get(&self) -> &T;
+    unsafe fn get_mut(&mut self) -> &mut T;
 }
 
 /// Simple typed allocator, just a wrapper around `Box`
@@ -42,19 +43,23 @@ impl<T> Arena<T, Box<T>> for BoxArena<T> {
 }
 
 impl<T> Boxed<T> for Box<T> {
-    type Unsafe = *const T;
+    type Unsafe = *mut T;
 
     fn unbox(boxed: Self) -> T {
         *boxed
     }
 
-    fn to_unsafe(boxed: &Self) -> *const T {
-        &**boxed as *const T
+    fn to_unsafe(boxed: &mut Self) -> *mut T {
+        &mut **boxed as *mut T
     }
 }
 
-impl<T> UnsafeBoxed<T> for *const T {
+impl<T> UnsafeBoxed<T> for *mut T {
     unsafe fn get(&self) -> &T {
         &**self
+    }
+
+    unsafe fn get_mut(&mut self) -> &mut T {
+        &mut **self
     }
 }

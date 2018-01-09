@@ -149,7 +149,7 @@ impl<T> Boxed<T> for Bucket<T> {
         boxed.arena.get_move(boxed.index)
     }
 
-    fn to_unsafe(boxed: &Self) -> Self::Unsafe {
+    fn to_unsafe(boxed: &mut Self) -> Self::Unsafe {
         UnsafeBucket {
             arena: boxed.arena.clone(),
             index: boxed.index,
@@ -166,5 +166,9 @@ impl<T: fmt::Debug> fmt::Debug for Bucket<T> {
 impl<T> UnsafeBoxed<T> for UnsafeBucket<T> {
     unsafe fn get(&self) -> &T {
         &*self.arena.get_ptr(self.index)
+    }
+
+    unsafe fn get_mut(&mut self) -> &mut T {
+        &mut *self.arena.get_ptr(self.index)
     }
 }
