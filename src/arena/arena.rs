@@ -20,7 +20,6 @@ pub trait Boxed<T>: Deref<Target=T> + DerefMut {
 }
 
 /// Conceptually a raw pointer to allocated box.
-/// mainly for up-reference for tree.
 pub trait UnsafeBoxed<T> {
     unsafe fn get(&self) -> &T;
     unsafe fn get_mut(&mut self) -> &mut T;
@@ -28,7 +27,7 @@ pub trait UnsafeBoxed<T> {
 
 /// Simple typed allocator, just a wrapper around `Box`
 /// This can be useful for comparison.
-pub struct BoxArena<T>(PhantomData<T>);
+pub struct BoxArena<T>(PhantomData<*mut T>);
 
 impl<T> Default for BoxArena<T> {
     fn default() -> Self {

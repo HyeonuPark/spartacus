@@ -3,11 +3,11 @@ use std::cmp::Ordering::{self, Less, Equal, Greater};
 use std::mem::swap;
 
 use arena::Boxed;
-use tree::Regulator;
+use tree::rule::Rule;
 
 pub struct Node<K, V, R, I> where
     K: Ord,
-    R: Regulator,
+    R: Rule,
     I: Indirect<K, V, R>,
 {
     key: K,
@@ -20,7 +20,7 @@ pub struct Node<K, V, R, I> where
 
 impl<K, V, R, I> Node<K, V, R, I> where
     K: Ord,
-    R: Regulator,
+    R: Rule,
     I: Indirect<K, V, R>,
 {
     pub fn new(key: K, value: V) -> Self {
@@ -38,7 +38,7 @@ impl<K, V, R, I> Node<K, V, R, I> where
 pub trait Indirect<K, V, R>: Boxed<Node<K, V, R, Self>> where
     Self: Sized,
     K: Ord,
-    R: Regulator,
+    R: Rule,
 {
     type Inner: Boxed<Node<K, V, R, Self>>;
 
@@ -47,7 +47,7 @@ pub trait Indirect<K, V, R>: Boxed<Node<K, V, R, Self>> where
 
 pub trait Edge<K, V, R, I> where
     K: Ord,
-    R: Regulator,
+    R: Rule,
     I: Indirect<K, V, R>,
 {
     fn len(&self) -> usize;
@@ -65,7 +65,7 @@ pub trait Edge<K, V, R, I> where
 
 impl<K, V, R, I> Edge<K, V, R, I> for Option<I> where
     K: Ord,
-    R: Regulator,
+    R: Rule,
     I: Indirect<K, V, R>,
 {
     fn len(&self) -> usize {
@@ -128,7 +128,9 @@ impl<K, V, R, I> Edge<K, V, R, I> for Option<I> where
         K: Borrow<Q>, Q: Ord + ?Sized
     {
         let child = match self.cmp_key(key) {
+            // This node is empty leaf
             None => return None,
+            // This node matches the key, so removed
             Some(Equal) => {
                 return self.take().map(|node| Boxed::unbox(node).value)
             }
@@ -139,6 +141,7 @@ impl<K, V, R, I> Edge<K, V, R, I> for Option<I> where
             }),
         };
 
+        // A child node has removed
         if child.is_some() {
             self.update();
         }

@@ -1,6 +1,6 @@
 use rand::random;
 
-use tree::{Regulator, Indirect, rotate_left, rotate_right};
+use super::prelude::*;
 
 /// Like treap, but use tree-rotation to maintain balance.
 #[derive(Debug, Clone, Copy)]
@@ -12,7 +12,7 @@ impl Default for RevTreap {
     }
 }
 
-impl Regulator for RevTreap {
+impl Rule for RevTreap {
     fn update<K, V, I>(node: &mut I) where
         K: Ord,
         I: Indirect<K, V, Self>,
@@ -38,8 +38,8 @@ impl Regulator for RevTreap {
         }
 
         match dir {
-            Dir::Left => rotate_right(node).unwrap(),
-            Dir::Right => rotate_left(node).unwrap(),
+            Dir::Left => node.rotate_right().unwrap(),
+            Dir::Right => node.rotate_left().unwrap(),
             _ => {}
         }
     }

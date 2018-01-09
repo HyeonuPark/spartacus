@@ -2,7 +2,10 @@ use std::borrow::Borrow;
 use std::marker::PhantomData;
 
 use arena::Arena;
-use tree::{Node, Edge, Indirect, Regulator};
+use tree::{Node, Indirect};
+use tree::rule::Rule;
+
+use super::node::Edge;
 
 #[macro_export]
 macro_rules! treemap {
@@ -38,8 +41,8 @@ macro_rules! treemap {
                 $B::<$Node>::unbox(boxed.0)
             }
 
-            fn to_unsafe(boxed: &Self) -> Self::Unsafe {
-                $B::<$Node>::to_unsafe(&boxed.0)
+            fn to_unsafe(boxed: &mut Self) -> Self::Unsafe {
+                $B::<$Node>::to_unsafe(&mut boxed.0)
             }
         }
 
@@ -55,7 +58,7 @@ macro_rules! treemap {
 
 pub struct TreeMap<K, V, R, A, I> where
     K: Ord,
-    R: Regulator,
+    R: Rule,
     A: Arena<Node<K, V, R, I>, I::Inner>,
     I: Indirect<K, V, R>,
 {
@@ -66,7 +69,7 @@ pub struct TreeMap<K, V, R, A, I> where
 
 impl<K, V, R, A, I> TreeMap<K, V, R, A, I> where
     K: Ord,
-    R: Regulator,
+    R: Rule,
     A: Arena<Node<K, V, R, I>, I::Inner>,
     I: Indirect<K, V, R>,
 {
@@ -122,7 +125,7 @@ impl<K, V, R, A, I> TreeMap<K, V, R, A, I> where
 
 impl<K, V, R, A, I> Default for TreeMap<K, V, R, A, I> where
     K: Ord,
-    R: Regulator,
+    R: Rule,
     A: Arena<Node<K, V, R, I>, I::Inner>,
     I: Indirect<K, V, R>,
 {

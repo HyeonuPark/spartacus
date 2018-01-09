@@ -14,7 +14,8 @@ use rand::{Rng, thread_rng};
 use spartacus::arena::{Arena, BoxArena};
 use spartacus::arena::vec_arena::{VecArena, Bucket};
 
-use spartacus::tree::{TreeMap, Noop, RevTreap};
+use spartacus::tree::TreeMap;
+use spartacus::tree::rule::{Noop, RevTreap};
 
 // Test macros are copied from rust-lang repository
 // https://github.com/rust-lang/rust/blob/9bea79bd5ef492cf2c24e098ac93638446cb4860/src/liballoc/benches/btree/map.rs
