@@ -1,34 +1,32 @@
 use std::rc::Rc;
-use std::cell::RefCell;
-use std::mem::ManuallyDrop as MD;
-use std::ptr;
+use std::cell::{RefCell, RefMut, UnsafeCell};
 use std::ops::{Deref, DerefMut};
-use std::fmt;
-use std::usize;
+use std::{usize, mem, ptr};
 
-use super::{Arena, Boxed, UnsafeBoxed};
+use arena;
 
 pub struct VecArena<T>(Rc<RefCell<ArenaData<T>>>);
 
-pub struct ArenaData<T> {
-    storage: Vec<Slot<T>>,
-    empty: usize,
-}
-
-#[derive(Clone)]
-pub struct Bucket<T> {
+pub struct Boxed<T> {
     arena: VecArena<T>,
     index: usize,
 }
 
-union Slot<T> {
-    data: MD<T>,
+pub struct UnsafeBoxed<T> {
+    arena: VecArena<T>,
+    index: usize,
+}
+
+struct ArenaData<T> {
+    storage: Vec<UnsafeCell<Slot<T>>>,
     empty: usize,
 }
 
-pub struct UnsafeBucket<T> {
-    arena: VecArena<T>,
-    index: usize,
+trait SlotPtrExt<T> {
+    fn to_ref<'a, U>(self, life: &'a U) -> &'a T;
+    fn to_mut<'a, U>(self, life: &'a mut U) -> &'a mut T;
+    fn set_data(self, data: T) -> usize;
+    fn set_empty(self, empty: usize) -> T;
 }
 
 impl<T> VecArena<T> {
@@ -39,136 +37,167 @@ impl<T> VecArena<T> {
         })))
     }
 
-    fn free(&self, index: usize) {
-        let mut arena = self.0.borrow_mut();
-
-        arena.storage[index].empty = arena.empty;
-        arena.empty = index;
-    }
-
-    unsafe fn get_ptr(&self, index: usize) -> *mut T {
-        assert!(index < self.0.borrow().storage.len());
-
+    fn get(&self) -> RefMut<ArenaData<T>> {
         self.0.borrow_mut()
-            .storage.as_mut_ptr()
-            .offset(index as isize) as *mut T
-    }
-
-    fn get(&self, index: usize) -> &T {
-        unsafe {
-            &*self.get_ptr(index)
-        }
-    }
-
-    fn get_mut(&self, index: usize) -> &mut T {
-        unsafe {
-            &mut *self.get_ptr(index)
-        }
-    }
-
-    fn get_move(&self, index: usize) -> T {
-        let res = unsafe {
-            ptr::read(self.get_ptr(index))
-        };
-
-        self.free(index);
-
-        res
-    }
-}
-
-impl<T> Arena<T, Bucket<T>> for VecArena<T> {
-    fn alloc(&self, data: T) -> Bucket<T> {
-        let mut arena = self.0.borrow_mut();
-
-        if arena.empty == usize::MAX {
-            arena.storage.push(Slot { empty: 0 });
-            arena.empty = 0;
-        }
-
-        let index = arena.empty;
-        arena.empty = unsafe {
-            let loc = arena.storage.get_mut(index)
-                .expect("Failed to get arena storage");
-            let new_empty = loc.empty;
-            loc.data = MD::new(data);
-            new_empty
-        };
-
-        drop(arena);
-
-        Bucket {
-            arena: VecArena(self.0.clone()),
-            index,
-        }
     }
 }
 
 impl<T> Default for VecArena<T> {
     fn default() -> Self {
-        VecArena::new()
+        Self::new()
     }
 }
 
 impl<T> Clone for VecArena<T> {
     fn clone(&self) -> Self {
-        VecArena(Rc::clone(&self.0))
+        VecArena(self.0.clone())
     }
 }
 
-impl<T> fmt::Debug for VecArena<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Arena {{ .. }}")
+impl<T> arena::Arena<T, Boxed<T>> for VecArena<T> {
+    fn alloc(&self, data: T) -> Boxed<T> {
+        let index = self.get().alloc(data);
+
+        Boxed {
+            arena: self.clone(),
+            index,
+        }
     }
 }
 
-impl<T> Drop for Bucket<T> {
-    fn drop(&mut self) {
-        self.arena.free(self.index)
-    }
-}
-
-impl<T> Deref for Bucket<T> {
+impl<T> Deref for Boxed<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        self.arena.get(self.index)
+        let slot = self.arena.get().slot(self.index);
+        slot.to_ref(self)
     }
 }
 
-impl<T> DerefMut for Bucket<T> {
+impl<T> DerefMut for Boxed<T> {
     fn deref_mut(&mut self) -> &mut T {
-        self.arena.get_mut(self.index)
+        let slot = self.arena.get().slot(self.index);
+        slot.to_mut(self)
     }
 }
 
-impl<T> Boxed<T> for Bucket<T> {
-    type Unsafe = UnsafeBucket<T>;
+impl<T> arena::Boxed<T> for Boxed<T> {
+    type Unsafe = UnsafeBoxed<T>;
 
     fn unbox(boxed: Self) -> T {
-        boxed.arena.get_move(boxed.index)
+        let data = {
+            let mut arena = boxed.arena.get();
+            arena.free(boxed.index)
+        };
+        mem::forget(boxed);
+
+        data
     }
 
     fn to_unsafe(boxed: &mut Self) -> Self::Unsafe {
-        UnsafeBucket {
+        UnsafeBoxed {
             arena: boxed.arena.clone(),
             index: boxed.index,
         }
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for Bucket<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.arena.get(self.index).fmt(f)
-    }
-}
-
-impl<T> UnsafeBoxed<T> for UnsafeBucket<T> {
+impl<T> arena::UnsafeBoxed<T> for UnsafeBoxed<T> {
     unsafe fn get(&self) -> &T {
-        &*self.arena.get_ptr(self.index)
+        let slot = self.arena.get().slot(self.index);
+        slot.to_ref(self)
     }
 
     unsafe fn get_mut(&mut self) -> &mut T {
-        &mut *self.arena.get_ptr(self.index)
+        let slot = self.arena.get().slot(self.index);
+        slot.to_mut(self)
+    }
+}
+
+impl<T> ArenaData<T> {
+    fn slot(&self, index: usize) -> *mut Slot<T> {
+        self.storage[index].get()
+    }
+
+    fn alloc(&mut self, data: T) -> usize {
+        if mem::size_of::<T>() == 0 {
+            return 0;
+        }
+
+        if self.empty == usize::MAX {
+            self.empty = self.storage.len();
+            self.storage.push(Slot::default().into());
+        }
+
+        let index = self.empty;
+        self.empty = self.slot(index).set_data(data);
+
+        index
+    }
+
+    fn free(&mut self, index: usize) -> T {
+        let prev_empty = self.empty;
+        self.empty = index;
+
+        self.slot(index).set_empty(prev_empty)
+    }
+}
+
+enum Slot<T> {
+    Data(T),
+    Empty(usize),
+}
+
+impl<T> Default for Slot<T> {
+    fn default() -> Self {
+        Slot::Empty(usize::MAX)
+    }
+}
+
+impl<T> SlotPtrExt<T> for *mut Slot<T> {
+    fn to_ref<'a, U>(self, _life: &'a U) -> &'a T {
+        unsafe {
+            match *self {
+                Slot::Data(ref data) => {
+                    mem::transmute::<&T, &'a T>(data)
+                }
+                _ => panic!("This slot is not data"),
+            }
+        }
+    }
+
+    fn to_mut<'a, U>(self, _life: &'a mut U) -> &'a mut T {
+        unsafe {
+            match *self {
+                Slot::Data(ref mut data) => {
+                    mem::transmute::<&mut T, &'a mut T>(data)
+                }
+                _ => panic!("This slot is not data"),
+            }
+        }
+    }
+
+    fn set_data(self, data: T) -> usize {
+        unsafe {
+            match ptr::read(self) {
+                Slot::Empty(empty) => {
+                    ptr::write(self, Slot::Data(data));
+                    empty
+                }
+                _ => panic!("This slot is not empty"),
+            }
+        }
+    }
+
+    fn set_empty(self, empty: usize) -> T {
+        unsafe {
+            match ptr::read(self) {
+                Slot::Data(data) => {
+                    ptr::write(self, Slot::Empty(empty));
+                    data
+                }
+                _ => panic!("This slot is not data"),
+            }
+        }
     }
 }
