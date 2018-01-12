@@ -1,4 +1,4 @@
-#![feature(untagged_unions)]
+#![cfg_attr(feature = "unions", feature(untagged_unions))]
 
 extern crate rand;
 

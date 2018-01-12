@@ -143,17 +143,20 @@ impl<T> ArenaData<T> {
     }
 }
 
+#[cfg(not(feature = "unions"))]
 enum Slot<T> {
     Data(T),
     Empty(usize),
 }
 
+#[cfg(not(feature = "unions"))]
 impl<T> Default for Slot<T> {
     fn default() -> Self {
         Slot::Empty(usize::MAX)
     }
 }
 
+#[cfg(not(feature = "unions"))]
 impl<T> SlotPtrExt<T> for *mut Slot<T> {
     fn to_ref<'a, U>(self, _life: &'a U) -> &'a T {
         unsafe {
@@ -198,6 +201,52 @@ impl<T> SlotPtrExt<T> for *mut Slot<T> {
                 }
                 _ => panic!("This slot is not data"),
             }
+        }
+    }
+}
+
+#[cfg(feature = "unions")]
+union Slot<T> {
+    data: mem::ManuallyDrop<T>,
+    empty: usize,
+}
+
+#[cfg(feature = "unions")]
+impl<T> Default for Slot<T> {
+    fn default() -> Self {
+        Slot { empty: usize::MAX }
+    }
+}
+
+#[cfg(feature = "unions")]
+impl<T> SlotPtrExt<T> for *mut Slot<T> {
+    fn to_ref<'a, U>(self, _life: &'a U) -> &'a T {
+        unsafe {
+            mem::transmute::<&T, &'a T>(&*(*self).data)
+        }
+    }
+
+    fn to_mut<'a, U>(self, _life:&'a mut U) -> &'a mut T {
+        unsafe {
+            mem::transmute::<&mut T, &'a mut T>(&mut *(*self).data)
+        }
+    }
+
+    fn set_data(self, data: T) -> usize {
+        unsafe {
+            let empty = ptr::read(self).empty;
+            let data = mem::ManuallyDrop::new(data);
+            ptr::write(self, Slot { data });
+            empty
+        }
+    }
+
+    fn set_empty(self, empty: usize) -> T {
+        unsafe {
+            let data = ptr::read(self).data;
+            let data = mem::ManuallyDrop::into_inner(data);
+            ptr::write(self, Slot { empty });
+            data
         }
     }
 }
